@@ -82,3 +82,9 @@ saved settings live under that id, so never rename it.
   header with the cards under it, or a self-contained `vertical-stack`) and
   sends each block to the currently shortest column, by a rough weight in leaf
   cards.
+- **navbar-card → rail**: the view's `custom:navbar-card` is taken out of the
+  card flow and drawn as a vertical rail on the panel's inner edge. A `#hash`
+  route replaces the current page (it does not stack); this dashboard's own
+  path goes home; any other path opens in the browser. `hold_action` runs on a
+  long press. Templated `selected`/`badge` are ignored; a templated `icon`
+  falls back to its last `mdi:` literal.

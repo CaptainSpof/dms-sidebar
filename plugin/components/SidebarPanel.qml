@@ -40,6 +40,7 @@ Item {
             startPage: tabData ? (tabData.page || "") : ""
             skipSections: tabData ? (tabData.skipSections || []) : []
             hideUnsupported: tabData ? tabData.hideUnsupported === true : false
+            railOnLeft: panel.slideout.slideEdge === "right"
             mdiFontPath: panel.mdiFont
             mdiMapPath: panel.mdiMap
         }

@@ -29,6 +29,9 @@ Item {
 
     property var config: null
     property var popups: ({})       // "#hash" -> pop-up card
+    property var navbar: null       // the view's navbar-card, drawn as a rail
+    // Put the rail on the left (the sidebar's inner edge when it slides from the right).
+    property bool railOnLeft: false
     property var rootBlocks: []     // first view's cards in blocks, pop-ups taken out
     property var pageStack: []      // [{kind: "popup", hash} | {kind: "entity", entity}]
     property var mdi: ({})
@@ -47,11 +50,16 @@ Item {
 
     function index() {
         const pops = {};
+        let nav = null;
         const roots = [];
         const view = config && config.views && config.views[0];
         const collect = card => {
             if (card && card.type === "custom:bubble-card" && card.card_type === "pop-up") {
                 pops[card.hash] = card;
+                return true;
+            }
+            if (card && card.type === "custom:navbar-card") {
+                nav = card;
                 return true;
             }
             return false;
@@ -66,10 +74,17 @@ Item {
             blocksOf((view.cards || []).filter(c => !collect(c))).forEach(b => roots.push(b));
         }
         popups = pops;
+        navbar = nav;
         rootBlocks = roots;
         pageStack = pageStack.filter(p => p.kind !== "popup" || pops[p.hash]);
         if (startPage && pageStack.length === 0 && pops[startPage])
-            pageStack = [{kind: "popup", hash: startPage, pinned: true}];
+            pageStack = [
+                {
+                    kind: "popup",
+                    hash: startPage,
+                    pinned: true
+                }
+            ];
     }
 
     // ── responsive layout ─────────────────────────────────────────────────
@@ -152,7 +167,8 @@ Item {
         }
     }
     onDashboardChanged: load()
-    onSkipSectionsChanged: if (config) index()
+    onSkipSectionsChanged: if (config)
+        index()
     Component.onCompleted: load()
 
     FontLoader {
@@ -178,7 +194,7 @@ Item {
     // Card strings may be JS (`${…}`) or Jinja (`{{ … }}`) templates, which are
     // not evaluated here: treat them as absent.
     function plain(s) {
-        if (typeof s !== "string" || s.indexOf("${") >= 0 || s.indexOf("{{") >= 0)
+        if (typeof s !== "string" || s.indexOf("${") >= 0 || s.indexOf("{{") >= 0 || s.indexOf("[[[") >= 0)
             return "";
         return s;
     }
@@ -207,53 +223,73 @@ Item {
         const on = isActive(entityId);
         const dc = s ? s.attributes.device_class : "";
         switch ((entityId || "").split(".")[0]) {
-        case "light": return on ? "mdi:lightbulb" : "mdi:lightbulb-outline";
-        case "switch": return on ? "mdi:toggle-switch-variant" : "mdi:toggle-switch-variant-off";
-        case "input_boolean": return on ? "mdi:toggle-switch" : "mdi:toggle-switch-off";
-        case "climate": return "mdi:thermostat";
-        case "cover": return on ? "mdi:window-shutter-open" : "mdi:window-shutter";
-        case "fan": return "mdi:fan";
-        case "lock": return on ? "mdi:lock-open-variant" : "mdi:lock";
-        case "media_player": return "mdi:speaker";
-        case "person": return "mdi:account";
-        case "scene": return "mdi:palette";
-        case "script": return "mdi:script-text";
-        case "vacuum": return "mdi:robot-vacuum";
+        case "light":
+            return on ? "mdi:lightbulb" : "mdi:lightbulb-outline";
+        case "switch":
+            return on ? "mdi:toggle-switch-variant" : "mdi:toggle-switch-variant-off";
+        case "input_boolean":
+            return on ? "mdi:toggle-switch" : "mdi:toggle-switch-off";
+        case "climate":
+            return "mdi:thermostat";
+        case "cover":
+            return on ? "mdi:window-shutter-open" : "mdi:window-shutter";
+        case "fan":
+            return "mdi:fan";
+        case "lock":
+            return on ? "mdi:lock-open-variant" : "mdi:lock";
+        case "media_player":
+            return "mdi:speaker";
+        case "person":
+            return "mdi:account";
+        case "scene":
+            return "mdi:palette";
+        case "script":
+            return "mdi:script-text";
+        case "vacuum":
+            return "mdi:robot-vacuum";
         case "binary_sensor":
-            if (dc === "door") return on ? "mdi:door-open" : "mdi:door-closed";
-            if (dc === "window") return on ? "mdi:window-open" : "mdi:window-closed";
-            if (dc === "motion" || dc === "occupancy" || dc === "presence") return on ? "mdi:motion-sensor" : "mdi:motion-sensor-off";
+            if (dc === "door")
+                return on ? "mdi:door-open" : "mdi:door-closed";
+            if (dc === "window")
+                return on ? "mdi:window-open" : "mdi:window-closed";
+            if (dc === "motion" || dc === "occupancy" || dc === "presence")
+                return on ? "mdi:motion-sensor" : "mdi:motion-sensor-off";
             return on ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline";
         case "sensor":
-            if (dc === "temperature") return "mdi:thermometer";
-            if (dc === "humidity") return "mdi:water-percent";
-            if (dc === "power" || dc === "energy") return "mdi:flash";
-            if (dc === "battery") return "mdi:battery";
+            if (dc === "temperature")
+                return "mdi:thermometer";
+            if (dc === "humidity")
+                return "mdi:water-percent";
+            if (dc === "power" || dc === "energy")
+                return "mdi:flash";
+            if (dc === "battery")
+                return "mdi:battery";
             return "mdi:eye";
-        default: return "mdi:eye";
+        default:
+            return "mdi:eye";
         }
     }
 
     readonly property var stateLabels: ({
-        "on": "Allumé",
-        "off": "Éteint",
-        "open": "Ouvert",
-        "closed": "Fermé",
-        "opening": "Ouverture",
-        "closing": "Fermeture",
-        "playing": "Lecture",
-        "paused": "Pause",
-        "idle": "Inactif",
-        "home": "À la maison",
-        "not_home": "Absent",
-        "locked": "Verrouillé",
-        "unlocked": "Déverrouillé",
-        "heat": "Chauffe",
-        "cool": "Clim",
-        "auto": "Auto",
-        "unavailable": "Indisponible",
-        "unknown": "Inconnu"
-    })
+            "on": "Allumé",
+            "off": "Éteint",
+            "open": "Ouvert",
+            "closed": "Fermé",
+            "opening": "Ouverture",
+            "closing": "Fermeture",
+            "playing": "Lecture",
+            "paused": "Pause",
+            "idle": "Inactif",
+            "home": "À la maison",
+            "not_home": "Absent",
+            "locked": "Verrouillé",
+            "unlocked": "Déverrouillé",
+            "heat": "Chauffe",
+            "cool": "Clim",
+            "auto": "Auto",
+            "unavailable": "Indisponible",
+            "unknown": "Inconnu"
+        })
 
     function stateText(entityId, attribute) {
         const s = stateObj(entityId);
@@ -346,11 +382,13 @@ Item {
             break;
         case "more-info":
             if (target)
-                push({kind: "entity", entity: target});
+                push({
+                    kind: "entity",
+                    entity: target
+                });
             break;
         case "navigate":
-            if (a.navigation_path && a.navigation_path.charAt(0) === "#" && popups[a.navigation_path])
-                push({kind: "popup", hash: a.navigation_path});
+            navigate(a.navigation_path || "");
             break;
         case "call-service":
         case "perform-action":
@@ -363,6 +401,66 @@ Item {
             }
             break;
         }
+    }
+
+    // "#hash" opens a pop-up page; this dashboard's own path goes home; any
+    // other path opens in the browser.
+    function navigate(path) {
+        if (path.charAt(0) === "#") {
+            if (popups[path])
+                push({
+                    kind: "popup",
+                    hash: path
+                });
+        } else if (path === "/" + dashboard || path.indexOf("/" + dashboard + "/") === 0) {
+            home();
+        } else if (path && ha.url) {
+            Qt.openUrlExternally(ha.url.replace(/\/+$/, "") + path);
+        }
+    }
+
+    // Rail route: replaces the page rather than stacking on it.
+    function goRoute(route) {
+        const a = route.tap_action || (route.url ? {
+                action: "navigate",
+                navigation_path: route.url
+            } : null);
+        if (!a)
+            return;
+        if (a.action === "navigate" && String(a.navigation_path).charAt(0) === "#") {
+            if (popups[a.navigation_path])
+                pageStack = pageStack.slice(0, floor).concat([
+                    {
+                        kind: "popup",
+                        hash: a.navigation_path
+                    }
+                ]);
+            return;
+        }
+        runAction(a);
+    }
+
+    function routeSelected(route) {
+        const a = route.tap_action || (route.url ? {
+                action: "navigate",
+                navigation_path: route.url
+            } : {});
+        const path = String(a.navigation_path || "");
+        if (path.charAt(0) === "#")
+            return !!page && page.kind === "popup" && page.hash === path;
+        return pageStack.length === floor && (path === "/" + dashboard || path.indexOf("/" + dashboard + "/") === 0);
+    }
+
+    // Templated icons ("[[[ return … ? 'mdi:a' : 'mdi:b' ]]]") are not evaluated:
+    // take the last literal, which is usually the resting state.
+    function routeIcon(route, selected) {
+        const icon = selected && route.icon_selected ? route.icon_selected : route.icon;
+        if (typeof icon !== "string")
+            return "mdi:link";
+        if (icon.indexOf("[[[") < 0)
+            return icon;
+        const all = icon.match(/mdi:[a-z0-9-]+/g);
+        return all ? all[all.length - 1] : "mdi:link";
     }
 
     function push(p) {
@@ -404,102 +502,160 @@ Item {
 
     // ── layout ────────────────────────────────────────────────────────────
 
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
         spacing: Theme.spacingS
+        layoutDirection: dash.railOnLeft ? Qt.RightToLeft : Qt.LeftToRight
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
-            spacing: Theme.spacingXS
-            // The tab already names the root page; only sub-pages get a title bar.
-            visible: dash.pageStack.length > 0
+            Layout.fillHeight: true
+            spacing: Theme.spacingS
 
-            DankActionButton {
-                visible: dash.pageStack.length > dash.floor
-                iconName: "arrow_back"
-                onClicked: dash.back()
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Theme.spacingXS
+                // The tab already names the root page; only sub-pages get a title bar.
+                visible: dash.pageStack.length > 0
+
+                DankActionButton {
+                    visible: dash.pageStack.length > dash.floor
+                    iconName: "arrow_back"
+                    onClicked: dash.back()
+                }
+                StyledText {
+                    Layout.fillWidth: true
+                    text: dash.pageTitle
+                    elide: Text.ElideRight
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.weight: Font.Medium
+                    color: Theme.surfaceText
+                }
+                DankActionButton {
+                    visible: dash.pageStack.length > dash.floor + 1
+                    iconName: "home"
+                    onClicked: dash.home()
+                }
             }
+
             StyledText {
                 Layout.fillWidth: true
-                text: dash.pageTitle
-                elide: Text.ElideRight
-                font.pixelSize: Theme.fontSizeLarge
-                font.weight: Font.Medium
-                color: Theme.surfaceText
+                Layout.fillHeight: true
+                visible: !dash.config
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.WordWrap
+                color: Theme.surfaceVariantText
+                text: dash.ha.phase === "error" ? dash.ha.errorText : (dash.ha.ready ? "Chargement du dashboard « " + dash.dashboard + " »…" : "Connexion à Home Assistant…")
             }
-            DankActionButton {
-                visible: dash.pageStack.length > dash.floor + 1
-                iconName: "home"
-                onClicked: dash.home()
-            }
-        }
 
-        StyledText {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: !dash.config
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            wrapMode: Text.WordWrap
-            color: Theme.surfaceVariantText
-            text: dash.ha.phase === "error" ? dash.ha.errorText : (dash.ha.ready ? "Chargement du dashboard « " + dash.dashboard + " »…" : "Connexion à Home Assistant…")
-        }
+            ScrollView {
+                id: scroller
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: !!dash.config
+                contentWidth: availableWidth
+                clip: true
 
-        ScrollView {
-            id: scroller
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            visible: !!dash.config
-            contentWidth: availableWidth
-            clip: true
-
-            ColumnLayout {
-                width: scroller.availableWidth
-                spacing: Theme.spacingM
-
-                // Entity page: the same controls as the area dashboard.
-                EntityRow {
-                    Layout.fillWidth: true
-                    visible: !!dash.page && dash.page.kind === "entity"
-                    ha: dash.ha
-                    entityId: dash.page && dash.page.kind === "entity" ? dash.page.entity : ""
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
+                ColumnLayout {
+                    width: scroller.availableWidth
                     spacing: Theme.spacingM
 
-                    Repeater {
-                        model: dash.columns
-                        delegate: ColumnLayout {
-                            id: column
-                            required property var modelData
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            Layout.alignment: Qt.AlignTop
-                            spacing: Theme.spacingM
+                    // Entity page: the same controls as the area dashboard.
+                    EntityRow {
+                        Layout.fillWidth: true
+                        visible: !!dash.page && dash.page.kind === "entity"
+                        ha: dash.ha
+                        entityId: dash.page && dash.page.kind === "entity" ? dash.page.entity : ""
+                    }
 
-                            Repeater {
-                                model: column.modelData
-                                delegate: ColumnLayout {
-                                    id: block
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    spacing: Theme.spacingS
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Theme.spacingM
 
-                                    Repeater {
-                                        model: block.modelData
-                                        delegate: Loader {
-                                            required property var modelData
-                                            Layout.fillWidth: true
-                                            Component.onCompleted: setSource("LvCard.qml", {
-                                                dash: dash,
-                                                card: modelData
-                                            })
+                        Repeater {
+                            model: dash.columns
+                            delegate: ColumnLayout {
+                                id: column
+                                required property var modelData
+                                Layout.fillWidth: true
+                                Layout.preferredWidth: 1
+                                Layout.alignment: Qt.AlignTop
+                                spacing: Theme.spacingM
+
+                                Repeater {
+                                    model: column.modelData
+                                    delegate: ColumnLayout {
+                                        id: block
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        spacing: Theme.spacingS
+
+                                        Repeater {
+                                            model: block.modelData
+                                            delegate: Loader {
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                Component.onCompleted: setSource("LvCard.qml", {
+                                                    dash: dash,
+                                                    card: modelData
+                                                })
+                                            }
                                         }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // The dashboard's navbar-card as a rail of route buttons. A long press runs
+        // the route's hold_action (e.g. all lights off).
+        StyledRect {
+            Layout.alignment: Qt.AlignVCenter
+            visible: !!dash.navbar && !!dash.config
+            implicitWidth: 52
+            implicitHeight: railColumn.implicitHeight + Theme.spacingS * 2
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
+
+            Column {
+                id: railColumn
+                anchors.centerIn: parent
+                spacing: Theme.spacingXS
+
+                Repeater {
+                    model: dash.navbar ? (dash.navbar.routes || []) : []
+                    delegate: StyledRect {
+                        id: routeButton
+                        required property var modelData
+                        readonly property bool selected: dash.routeSelected(modelData)
+                        width: 44
+                        height: 44
+                        radius: Theme.cornerRadius
+                        color: selected ? Theme.secondaryContainer : (routeArea.containsMouse ? Theme.surfaceContainerHighest : "transparent")
+                        ToolTip.visible: routeArea.containsMouse && !!modelData.label
+                        ToolTip.text: modelData.label || ""
+                        ToolTip.delay: 500
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: dash.glyph(dash.routeIcon(routeButton.modelData, routeButton.selected))
+                            font.family: dash.mdiFamily
+                            font.pixelSize: 22
+                            color: routeButton.selected ? Theme.onSecondaryContainer : Theme.surfaceVariantText
+                        }
+
+                        MouseArea {
+                            id: routeArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: dash.goRoute(routeButton.modelData)
+                            onPressAndHold: if (routeButton.modelData.hold_action)
+                                dash.runAction(routeButton.modelData.hold_action)
                         }
                     }
                 }
