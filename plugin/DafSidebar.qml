@@ -89,6 +89,9 @@ PluginComponent {
             layerNamespace: "dms:plugins:dafSidebar"
             title: "Sidebar"
             slideoutWidth: root.panelWidth
+            // DSlideout draws the expand/collapse button in its header.
+            expandable: true
+            expandedWidthValue: root.panelWidth * 2
             edgeGap: SettingsData.notepadEffectiveEdgeGap
             slideEdge: root.side
             customTransparency: Theme.notepadTransparency
