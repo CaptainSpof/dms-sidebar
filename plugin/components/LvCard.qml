@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Common
 import qs.Widgets
@@ -27,7 +28,7 @@ Item {
         case "entities": return "entities";
         case "custom:paper-buttons-row":
             const nav = card.base_config && card.base_config.tap_action;
-            return nav && nav.action === "navigate" && String(nav.navigation_path).charAt(0) === "#" ? "room" : "paper";
+            return nav && nav.action === "navigate" && String(nav.navigation_path).charAt(0) === "#" ? "room" : (paperButtons(card).length > 0 ? "paper" : "hidden");
         case "custom:bubble-card":
             switch (card.card_type) {
             case "separator": return "separator";
@@ -39,6 +40,12 @@ Item {
             }
         default: return "fallback";
         }
+    }
+
+    // paper-buttons-row buttons with base_config merged in, minus the inert ones
+    // (no entity and no action: in this dashboard, icon-only decorations).
+    function paperButtons(c) {
+        return (c.buttons || []).map(b => Object.assign({}, c.base_config || {}, b)).filter(b => !!b.entity || (b.tap_action && b.tap_action.action && b.tap_action.action !== "none"));
     }
 
     readonly property bool shown: !!dash && kind !== "hidden" && !(kind === "fallback" && dash.hideUnsupported) && dash.conditionsMet(card.visibility) && (kind !== "conditional" || dash.conditionsMet(card.conditions))
@@ -473,39 +480,77 @@ Item {
     // Any other paper-buttons-row: one chip per button.
     Component {
         id: paperRow
-        Flow {
+        // One line of equal cells. A cell shows the state when the button has one,
+        // else its name; the full "name: state" is in the tooltip.
+        RowLayout {
             spacing: Theme.spacingS
             Repeater {
-                model: (root.card.buttons || []).map(b => Object.assign({}, root.card.base_config || {}, b))
-                delegate: Chip {
-                    dash: root.dash
+                model: root.paperButtons(root.card)
+                delegate: StyledRect {
+                    id: cell
                     required property var modelData
                     readonly property var b: modelData
                     readonly property string ent: b.entity || ""
                     readonly property var st: root.dash.stateObj(ent)
                     readonly property string layout: String(b.layout || "icon|name")
+                    readonly property bool active: ent !== "" && root.dash.isActive(ent)
                     visible: root.dash.conditionsMet(b.visibility)
-                    icon: {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 1
+                    implicitHeight: 36
+                    radius: height / 2
+                    color: active ? Theme.secondaryContainer : Theme.surfaceContainerHighest
+                    ToolTip.visible: cellArea.containsMouse && tip !== ""
+                    ToolTip.text: tip
+                    ToolTip.delay: 500
+
+                    readonly property string name: {
+                        if (b.name === false)
+                            return "";
+                        return typeof b.name === "string" ? b.name.trim() : (ent ? root.dash.friendlyName(ent) : "");
+                    }
+                    readonly property string stateLabel: {
+                        if (layout.indexOf("state") < 0 || !ent)
+                            return "";
+                        const raw = st ? (b.state && b.state.attribute ? st.attributes[b.state.attribute] : st.state) : "";
+                        const txt = b.state_text && b.state_text[raw] !== undefined ? b.state_text[raw] : root.dash.stateText(ent, b.state && b.state.attribute);
+                        return txt + ((b.state && b.state.postfix) || "");
+                    }
+                    readonly property string tip: [name, stateLabel].filter(s => s !== "").join(" : ")
+                    readonly property string iconName: {
                         if (st && b.state_icons && b.state_icons[st.state])
                             return b.state_icons[st.state];
                         return b.icon || (ent ? root.dash.entityIcon(ent) : "");
                     }
-                    label: {
-                        const parts = [];
-                        if (layout.indexOf("name") >= 0 && b.name !== false) {
-                            const n = typeof b.name === "string" ? b.name.trim() : (ent ? root.dash.friendlyName(ent) : "");
-                            if (n)
-                                parts.push(n);
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.rightMargin: Theme.spacingS
+                        spacing: Theme.spacingXS
+
+                        Mdi {
+                            dash: root.dash
+                            icon: cell.iconName
+                            size: 18
+                            color: cell.active ? Theme.onSecondaryContainer : Theme.surfaceVariantText
                         }
-                        if (layout.indexOf("state") >= 0 && ent) {
-                            const raw = st ? (b.state && b.state.attribute ? st.attributes[b.state.attribute] : st.state) : "";
-                            const txt = b.state_text && b.state_text[raw] !== undefined ? b.state_text[raw] : root.dash.stateText(ent, b.state && b.state.attribute);
-                            parts.push(txt + ((b.state && b.state.postfix) || ""));
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: cell.stateLabel || (cell.layout.indexOf("name") >= 0 ? cell.name : "")
+                            elide: Text.ElideRight
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: cell.active ? Theme.onSecondaryContainer : Theme.surfaceText
                         }
-                        return parts.join(" ");
                     }
-                    active: ent !== "" && root.dash.isActive(ent)
-                    onTapped: root.dash.runAction(b.tap_action || {action: "toggle"}, ent)
+
+                    MouseArea {
+                        id: cellArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.dash.runAction(cell.b.tap_action || {action: "toggle"}, cell.ent)
+                    }
                 }
             }
         }

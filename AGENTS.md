@@ -55,7 +55,8 @@ saved settings live under that id, so never rename it.
   ones through a Loader.
 - **Supported**: bubble-card `button` (name/state/switch/slider),
   `separator`, `sub-buttons`, `media-player`, `pop-up` (as a page);
-  `paper-buttons-row` (a row whose base action navigates to `#…` is read as a
+  `paper-buttons-row` (one line of equal cells, state else name, inert
+  icon-only buttons dropped; a row whose base action navigates to `#…` is read as a
   room tile); `vertical-stack`, `horizontal-stack`, `grid`, `conditional`,
   `visibility`; HA `tile`/`entity`/`button`/`heading`/`entities`. Anything else
   is a fallback box naming its type, or nothing with `hideUnsupported`.
