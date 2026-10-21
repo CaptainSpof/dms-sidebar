@@ -1,0 +1,13 @@
+{
+	"id": "dafSidebar",
+	"name": "Sidebar",
+	"description": "Tabbed side panel for DankMaterialShell: Home Assistant dashboard and other widgets",
+	"version": "0.1.0",
+	"author": "CaptainSpof",
+	"icon": "side_navigation",
+	"type": "daemon",
+	"component": "./DafSidebar.qml",
+	"settings": "./DafSidebarSettings.qml",
+	"permissions": ["settings_read", "settings_write"],
+	"requires_dms": ">=1.7.0"
+}
