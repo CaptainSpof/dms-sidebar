@@ -74,3 +74,6 @@ saved settings live under that id, so never rename it.
   the links back before the next switch, or the switch refuses to clobber.
 - `dms ipc call dafSidebar toggle` opens on the focused output, which may be a
   screen the user is watching; prefer asking for a visual check.
+- **A deploy does not restart DMS.** The plugin link moves to the new store
+  path, but the running shell keeps the component it compiled. After a switch,
+  `systemctl --user restart dms` before judging a change.
