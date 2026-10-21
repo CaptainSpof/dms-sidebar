@@ -29,3 +29,16 @@ saved settings live under that id, so never rename it.
   edit under `components/` or after a component failed to load once.
 - DMS swallows handler exceptions; probe by writing a file under `$HOME` with
   `Quickshell.execDetached`.
+
+## Home Assistant
+
+- [HaClient.qml](plugin/components/HaClient.qml) speaks the WebSocket API
+  (`get_states`, `subscribe_events`, area/device/entity registries). It only
+  connects while a slideout is visible.
+- Config lives in `~/.config/DankMaterialShell/dafSidebar.json` (optional, see
+  the header of [DafSidebar.qml](plugin/DafSidebar.qml)); the token is read from
+  `~/.config/hass/token` at runtime.
+- **Same-name binding trap, again**: `ha: ha` inside `SidebarPanel {}` binds the
+  panel's property to itself. The client's id is `haClient`.
+- **Restarting DMS**: `systemctl --user restart dms`. Never `pkill -f "dms run"`
+  from a shell command that contains that string — it kills the shell too.
