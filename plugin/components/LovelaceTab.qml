@@ -30,8 +30,6 @@ Item {
     property var config: null
     property var popups: ({})       // "#hash" -> pop-up card
     property var navbar: null       // the view's navbar-card, drawn as a rail
-    // Put the rail on the left (the sidebar's inner edge when it slides from the right).
-    property bool railOnLeft: false
     property var rootBlocks: []     // first view's cards in blocks, pop-ups taken out
     property var pageStack: []      // [{kind: "popup", hash} | {kind: "entity", entity}]
     property var mdi: ({})
@@ -440,6 +438,19 @@ Item {
         runAction(a);
     }
 
+    // Routes that stay in the sidebar: pop-ups and this dashboard. Links to other
+    // dashboards or HA pages are left out.
+    readonly property var railRoutes: (navbar ? (navbar.routes || []) : []).filter(route => {
+        const a = route.tap_action || (route.url ? {
+                action: "navigate",
+                navigation_path: route.url
+            } : {});
+        if (a.action !== "navigate")
+            return true;
+        const path = String(a.navigation_path || "");
+        return path.charAt(0) === "#" || path === "/" + dashboard || path.indexOf("/" + dashboard + "/") === 0;
+    })
+
     function routeSelected(route) {
         const a = route.tap_action || (route.url ? {
                 action: "navigate",
@@ -502,10 +513,9 @@ Item {
 
     // ── layout ────────────────────────────────────────────────────────────
 
-    RowLayout {
+    ColumnLayout {
         anchors.fill: parent
         spacing: Theme.spacingS
-        layoutDirection: dash.railOnLeft ? Qt.RightToLeft : Qt.LeftToRight
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -611,23 +621,23 @@ Item {
             }
         }
 
-        // The dashboard's navbar-card as a rail of route buttons. A long press runs
-        // the route's hold_action (e.g. all lights off).
+        // The dashboard's navbar-card as a bottom bar, as on a phone. A long press
+        // runs the route's hold_action (e.g. all lights off).
         StyledRect {
-            Layout.alignment: Qt.AlignVCenter
-            visible: !!dash.navbar && !!dash.config
-            implicitWidth: 52
-            implicitHeight: railColumn.implicitHeight + Theme.spacingS * 2
+            Layout.alignment: Qt.AlignHCenter
+            visible: dash.railRoutes.length > 0 && !!dash.config
+            implicitWidth: railRow.implicitWidth + Theme.spacingS * 2
+            implicitHeight: 52
             radius: Theme.cornerRadius
             color: Theme.surfaceContainerHigh
 
-            Column {
-                id: railColumn
+            Row {
+                id: railRow
                 anchors.centerIn: parent
                 spacing: Theme.spacingXS
 
                 Repeater {
-                    model: dash.navbar ? (dash.navbar.routes || []) : []
+                    model: dash.railRoutes
                     delegate: StyledRect {
                         id: routeButton
                         required property var modelData

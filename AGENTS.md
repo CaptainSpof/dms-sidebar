@@ -8,7 +8,7 @@ saved settings live under that id, so never rename it.
 
 - [plugin/DafSidebar.qml](plugin/DafSidebar.qml) is a `daemon` plugin: one
   instance, no bar pill. It owns a `DankSlideout` per screen and the IPC target
-  (`dms ipc call dafSidebar toggle`).
+  (`dms ipc call dafSidebar toggle`, or `toggleOn <output>` for a given screen).
 - [plugin/components/SidebarPanel.qml](plugin/components/SidebarPanel.qml) is the
   slideout body: a tab bar over a `StackLayout`. A new widget is a `tabs` entry
   plus a component.
@@ -73,7 +73,7 @@ saved settings live under that id, so never rename it.
   the plugin dir are Home Manager links. Replace them for live work and put
   the links back before the next switch, or the switch refuses to clobber.
 - `dms ipc call dafSidebar toggle` opens on the focused output, which may be a
-  screen the user is watching; prefer asking for a visual check.
+  screen the user is watching; use `toggleOn <output>` for a capture instead.
 - **A deploy does not restart DMS.** The plugin link moves to the new store
   path, but the running shell keeps the component it compiled. After a switch,
   `systemctl --user restart dms` before judging a change.
@@ -82,9 +82,9 @@ saved settings live under that id, so never rename it.
   header with the cards under it, or a self-contained `vertical-stack`) and
   sends each block to the currently shortest column, by a rough weight in leaf
   cards.
-- **navbar-card → rail**: the view's `custom:navbar-card` is taken out of the
-  card flow and drawn as a vertical rail on the panel's inner edge. A `#hash`
+- **navbar-card → bottom bar**: the view's `custom:navbar-card` is taken out
+  of the card flow and drawn as a bar at the bottom, as on a phone. A `#hash`
   route replaces the current page (it does not stack); this dashboard's own
-  path goes home; any other path opens in the browser. `hold_action` runs on a
+  path goes home; routes to other dashboards or HA pages are left out. `hold_action` runs on a
   long press. Templated `selected`/`badge` are ignored; a templated `icon`
   falls back to its last `mdi:` literal.

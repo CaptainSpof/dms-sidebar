@@ -119,6 +119,12 @@ PluginComponent {
             return "ok";
         }
 
+        // `dms ipc call dafSidebar toggleOn DP-2`: a given output, focused or not.
+        function toggleOn(screen: string): string {
+            root.toggleOn(screen);
+            return "ok";
+        }
+
         function hide(): string {
             (slideouts.instances || []).forEach(s => s.hide());
             return "ok";
