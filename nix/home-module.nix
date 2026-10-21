@@ -20,8 +20,12 @@ let
   pluginSettingsFile = "${config.xdg.configHome}/DankMaterialShell/plugin_settings.json";
 
   # Only what differs from the plugin's own defaults reaches the file.
+  mdi = self.packages.${pkgs.stdenv.hostPlatform.system}.mdi-icons;
+
   pluginConfig = lib.filterAttrs (_: v: v != null) {
     inherit (cfg) url tokenFile;
+    mdiFont = "${mdi}/mdi.ttf";
+    mdiMap = "${mdi}/mdi.json";
     tabs = if cfg.tabs == [ ] then null else cfg.tabs;
   };
 in
@@ -57,14 +61,31 @@ in
             id = "home";
             text = "Maison";
             icon = "home";
+            type = "lovelace";
+            dashboard = "dashboard-maison";
+          }
+          {
+            id = "salon";
+            text = "Salon";
+            icon = "weekend";
+            type = "lovelace";
+            dashboard = "dashboard-maison";
+            page = "#popup_living_room";
+          }
+          {
+            id = "pieces";
+            text = "Pièces";
+            icon = "grid_view";
             type = "home";
             sections = [ { byArea = true; } ];
           }
         ]
       '';
       description = ''
-        Tabs, as in `dafSidebar.json`. Empty keeps the plugin's default: a
-        single "home" tab with one section per area.
+        Tabs, as in `dafSidebar.json`. `type = "lovelace"` renders the HA
+        dashboard `dashboard` (its url_path), optionally opened on the pop-up
+        `page`; `type = "home"` lists entities by area. Empty keeps the
+        plugin's default: a single "home" tab with one section per area.
       '';
     };
   };

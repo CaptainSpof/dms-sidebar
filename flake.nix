@@ -13,6 +13,10 @@
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
+      packages = forAllSystems (pkgs: {
+        mdi-icons = pkgs.callPackage ./nix/mdi-icons.nix { };
+      });
+
       homeModules = {
         dms-sidebar = import ./nix/home-module.nix self;
         default = self.homeModules.dms-sidebar;

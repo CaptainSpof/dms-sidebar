@@ -45,3 +45,32 @@ saved settings live under that id, so never rename it.
 - **`dafoltop` resolves to its Tailscale address, which HA rejects (401, CGNAT
   vs `local_only`).** Use the LAN address in `dafSidebar.json`
   (`http://192.168.0.10:8123`); the token itself is fine.
+
+## Lovelace tab (`type: "lovelace"`)
+
+- [LovelaceTab.qml](plugin/components/LovelaceTab.qml) fetches
+  `lovelace/config` for one dashboard and is the context (`dash`) for every
+  card: icons, state text, conditions, actions, page stack.
+  [LvCard.qml](plugin/components/LvCard.qml) renders one card and loads nested
+  ones through a Loader.
+- **Supported**: bubble-card `button` (name/state/switch/slider),
+  `separator`, `sub-buttons`, `media-player`, `pop-up` (as a page);
+  `paper-buttons-row` (a row whose base action navigates to `#…` is read as a
+  room tile); `vertical-stack`, `horizontal-stack`, `grid`, `conditional`,
+  `visibility`; HA `tile`/`entity`/`button`/`heading`/`entities`. Anything else
+  is a fallback box naming its type.
+- **Read for meaning, not for looks**: `styles`, `card_mod`, bubble modules
+  (origami_*) are ignored. JS (`${…}`) and Jinja (`{{ … }}`) templates are not
+  evaluated; a templated string counts as absent.
+- `more-info` opens an entity page (EntityRow); `navigate` only follows
+  `#pop-up` hashes. Screen/user conditions are always true.
+- **Inline `component`s cannot see the file's ids**: each one takes `dash` as a
+  property, passed from `root.dash` at every instantiation.
+- Icons: `mdi:` names map to codepoints of the Material Design Icons font
+  through `mdi.json`, generated from the font's glyph names at build time
+  ([nix/mdi-icons.nix](nix/mdi-icons.nix)); the HM module passes both paths.
+- **Testing on a box where the HM module is deployed**: `dafSidebar.json` and
+  the plugin dir are Home Manager links. Replace them for live work and put
+  the links back before the next switch, or the switch refuses to clobber.
+- `dms ipc call dafSidebar toggle` opens on the focused output, which may be a
+  screen the user is watching; prefer asking for a visual check.

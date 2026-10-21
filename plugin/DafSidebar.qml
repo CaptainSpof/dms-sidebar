@@ -15,6 +15,7 @@ import "./components"
 // ~/.config/DankMaterialShell/dafSidebar.json:
 //   { "url": "http://dafoltop:8123",
 //     "tokenFile": "~/.config/hass/token",
+//     "mdiFont": "/nix/store/.../mdi.ttf", "mdiMap": "/nix/store/.../mdi.json",
 //     "tabs": [ {id, text, icon, type: "home", sections: [...]} ] }
 PluginComponent {
     id: root
@@ -100,6 +101,8 @@ PluginComponent {
                     slideout: slideoutWindow
                     ha: haClient
                     tabs: root.tabs
+                    mdiFont: root.config.mdiFont || ""
+                    mdiMap: root.config.mdiMap || ""
                 }
             }
         }

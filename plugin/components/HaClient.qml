@@ -38,6 +38,12 @@ Item {
         });
     }
 
+    signal lovelaceUpdated(string urlPath)
+
+    function fetchLovelace(urlPath, callback) {
+        _send({type: "lovelace/config", url_path: urlPath || null}, m => callback(m.result));
+    }
+
     function stateOf(entityId) {
         return states[entityId];
     }
@@ -88,6 +94,7 @@ Item {
             states = next;
         });
         _send({type: "subscribe_events", event_type: "state_changed"});
+        _send({type: "subscribe_events", event_type: "lovelace_updated"});
         _send({type: "config/area_registry/list"}, m => {
             const next = {};
             (m.result || []).forEach(a => next[a.area_id] = a.name);
@@ -142,6 +149,10 @@ Item {
             }
             break;
         case "event":
+            if (m.event && m.event.event_type === "lovelace_updated") {
+                lovelaceUpdated((m.event.data && m.event.data.url_path) || "");
+                break;
+            }
             const d = m.event && m.event.data;
             if (d && d.entity_id) {
                 if (d.new_state)

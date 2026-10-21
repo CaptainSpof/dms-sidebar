@@ -5,8 +5,9 @@ import qs.Widgets
 import qs.DCommon.Widgets as DCommon
 
 // Slideout body: a tab bar over a stack of tab widgets. A tab is
-// {id, text, icon, type, sections}; `type: "home"` is the Home Assistant
-// dashboard, anything else shows a placeholder. To add a widget type, add a
+// {id, text, icon, type, ...}: `type: "home"` is the per-area entity list
+// (`sections`), `type: "lovelace"` renders an HA dashboard (`dashboard`: its
+// url_path), anything else shows a placeholder. To add a widget type, add a
 // component below and a branch in the Loader.
 Item {
     id: panel
@@ -14,6 +15,8 @@ Item {
     required property var slideout
     required property var ha
     required property var tabs
+    property string mdiFont: ""
+    property string mdiMap: ""
 
     property int currentIndex: 0
 
@@ -25,6 +28,18 @@ Item {
             property var tabData
             ha: panel.ha
             sections: tabData ? (tabData.sections || []) : []
+        }
+    }
+
+    Component {
+        id: lovelaceTab
+        LovelaceTab {
+            property var tabData
+            ha: panel.ha
+            dashboard: tabData ? (tabData.dashboard || "") : ""
+            startPage: tabData ? (tabData.page || "") : ""
+            mdiFontPath: panel.mdiFont
+            mdiMapPath: panel.mdiMap
         }
     }
 
@@ -58,7 +73,7 @@ Item {
                 delegate: Loader {
                     id: loader
                     required property var modelData
-                    sourceComponent: modelData.type === "home" ? homeTab : placeholderTab
+                    sourceComponent: modelData.type === "home" ? homeTab : (modelData.type === "lovelace" ? lovelaceTab : placeholderTab)
                     onLoaded: item.tabData = modelData
                 }
             }

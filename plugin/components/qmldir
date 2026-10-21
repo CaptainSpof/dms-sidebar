@@ -3,3 +3,5 @@ PlaceholderTab 1.0 PlaceholderTab.qml
 HaClient 1.0 HaClient.qml
 EntityRow 1.0 EntityRow.qml
 HomeTab 1.0 HomeTab.qml
+LovelaceTab 1.0 LovelaceTab.qml
+LvCard 1.0 LvCard.qml
