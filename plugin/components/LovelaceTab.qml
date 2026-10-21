@@ -25,7 +25,7 @@ Item {
 
     property var config: null
     property var popups: ({})       // "#hash" -> pop-up card
-    property var rootCards: []      // first view's cards, pop-ups taken out
+    property var rootBlocks: []     // first view's cards in blocks, pop-ups taken out
     property var pageStack: []      // [{kind: "popup", hash} | {kind: "entity", entity}]
     property var mdi: ({})
     readonly property var page: pageStack.length > 0 ? pageStack[pageStack.length - 1] : null
@@ -53,20 +53,86 @@ Item {
             return false;
         };
         if (view) {
-            (view.sections || []).forEach(sec => (sec.cards || []).forEach(c => {
-                if (!collect(c))
-                    roots.push(c);
-            }));
-            (view.cards || []).forEach(c => {
-                if (!collect(c))
-                    roots.push(c);
+            (view.sections || []).forEach(sec => {
+                const cards = (sec.cards || []).filter(c => !collect(c));
+                blocksOf(cards).forEach(b => roots.push(b));
             });
+            blocksOf((view.cards || []).filter(c => !collect(c))).forEach(b => roots.push(b));
         }
         popups = pops;
-        rootCards = roots;
+        rootBlocks = roots;
         pageStack = pageStack.filter(p => p.kind !== "popup" || pops[p.hash]);
         if (startPage && pageStack.length === 0 && pops[startPage])
             pageStack = [{kind: "popup", hash: startPage, pinned: true}];
+    }
+
+    // ── responsive layout ─────────────────────────────────────────────────
+    // Cards are grouped into blocks — a header (bubble separator, heading) with
+    // the cards under it, or a self-contained vertical-stack — and the blocks
+    // are spread over as many columns as the width allows.
+
+    readonly property real minColumnWidth: 360
+
+    function isHeader(c) {
+        return !!c && ((c.type === "custom:bubble-card" && c.card_type === "separator") || c.type === "heading");
+    }
+
+    function blocksOf(cards) {
+        let list = cards || [];
+        while (list.length === 1 && list[0].type === "vertical-stack")
+            list = list[0].cards || [];
+        const out = [];
+        let cur = [];
+        list.forEach(c => {
+            if ((isHeader(c) || c.type === "vertical-stack") && cur.length > 0) {
+                out.push(cur);
+                cur = [];
+            }
+            cur.push(c);
+            if (c.type === "vertical-stack") {
+                out.push(cur);
+                cur = [];
+            }
+        });
+        if (cur.length > 0)
+            out.push(cur);
+        return out;
+    }
+
+    // Rough height of a card, in leaf cards.
+    function weight(c) {
+        if (!c)
+            return 0;
+        if (isHeader(c))
+            return 0.5;
+        if (c.type === "conditional")
+            return weight(c.card);
+        if (c.cards) {
+            const ws = c.cards.map(x => weight(x));
+            const sum = ws.reduce((a, b) => a + b, 0);
+            return c.type === "grid" ? sum / Math.max(1, Number(c.columns) || 2) : (c.type === "horizontal-stack" ? Math.max(0, ...ws) : sum);
+        }
+        return 1;
+    }
+
+    // Greedy: each block goes to the currently shortest column, so reading
+    // order runs roughly left to right, top to bottom.
+    function spread(blocks, n) {
+        const cols = [];
+        const heights = [];
+        for (let i = 0; i < n; i++) {
+            cols.push([]);
+            heights.push(0);
+        }
+        blocks.forEach(b => {
+            let k = 0;
+            for (let i = 1; i < n; i++)
+                if (heights[i] < heights[k] - 0.01)
+                    k = i;
+            cols[k].push(b);
+            heights[k] += b.reduce((a, c) => a + weight(c), 0) + 0.5;
+        });
+        return cols.filter(c => c.length > 0);
     }
 
     Connections {
@@ -316,15 +382,18 @@ Item {
         return friendlyName(page.entity);
     }
 
-    readonly property var pageCards: {
+    readonly property var pageBlocks: {
         if (!page)
-            return rootCards;
+            return rootBlocks;
         if (page.kind === "popup") {
             const p = popups[page.hash];
-            return p ? (p.cards || []) : [];
+            return p ? blocksOf(p.cards || []) : [];
         }
         return [];
     }
+
+    readonly property int columnCount: Math.max(1, Math.floor((scroller.availableWidth + Theme.spacingM) / (minColumnWidth + Theme.spacingM)))
+    readonly property var columns: spread(pageBlocks, columnCount)
 
     // ── layout ────────────────────────────────────────────────────────────
 
@@ -387,15 +456,42 @@ Item {
                     entityId: dash.page && dash.page.kind === "entity" ? dash.page.entity : ""
                 }
 
-                Repeater {
-                    model: dash.pageCards
-                    delegate: Loader {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        Component.onCompleted: setSource("LvCard.qml", {
-                            dash: dash,
-                            card: modelData
-                        })
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.spacingM
+
+                    Repeater {
+                        model: dash.columns
+                        delegate: ColumnLayout {
+                            id: column
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            Layout.alignment: Qt.AlignTop
+                            spacing: Theme.spacingM
+
+                            Repeater {
+                                model: column.modelData
+                                delegate: ColumnLayout {
+                                    id: block
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: Theme.spacingS
+
+                                    Repeater {
+                                        model: block.modelData
+                                        delegate: Loader {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            Component.onCompleted: setSource("LvCard.qml", {
+                                                dash: dash,
+                                                card: modelData
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

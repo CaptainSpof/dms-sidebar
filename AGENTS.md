@@ -77,3 +77,8 @@ saved settings live under that id, so never rename it.
 - **A deploy does not restart DMS.** The plugin link moves to the new store
   path, but the running shell keeps the component it compiled. After a switch,
   `systemctl --user restart dms` before judging a change.
+- **Responsive layout**: both tabs spread their content over
+  `floor(width / 360px)` columns. The lovelace tab groups cards into blocks (a
+  header with the cards under it, or a self-contained `vertical-stack`) and
+  sends each block to the currently shortest column, by a rough weight in leaf
+  cards.
