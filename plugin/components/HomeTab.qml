@@ -16,7 +16,7 @@ Item {
     property var sections: []
 
     readonly property var defaultDomains: ["light", "switch", "climate", "cover"]
-    readonly property var defaultExclude: ["adaptive_lighting", "adaptive lighting", "sleep.mode", "adapt.(brightness|color)", "smart.temperature", "bypass", "permit.join", "_led", "disable.leds"]
+    readonly property var defaultExclude: ["adaptive_lighting", "adaptive lighting", "sleep.mode", "adapt.(brightness|color)", "smart.temperature", "bypass", "permit.join", "_led", "disable.leds", "child.lock", "open.window", "do.not.disturb", "dust.emptying"]
 
     property var groups: []
     property string _signature: ""

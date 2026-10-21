@@ -42,3 +42,6 @@ saved settings live under that id, so never rename it.
   panel's property to itself. The client's id is `haClient`.
 - **Restarting DMS**: `systemctl --user restart dms`. Never `pkill -f "dms run"`
   from a shell command that contains that string — it kills the shell too.
+- **`dafoltop` resolves to its Tailscale address, which HA rejects (401, CGNAT
+  vs `local_only`).** Use the LAN address in `dafSidebar.json`
+  (`http://192.168.0.10:8123`); the token itself is fine.
