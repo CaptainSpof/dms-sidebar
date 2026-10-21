@@ -58,7 +58,7 @@ saved settings live under that id, so never rename it.
   `paper-buttons-row` (a row whose base action navigates to `#…` is read as a
   room tile); `vertical-stack`, `horizontal-stack`, `grid`, `conditional`,
   `visibility`; HA `tile`/`entity`/`button`/`heading`/`entities`. Anything else
-  is a fallback box naming its type.
+  is a fallback box naming its type, or nothing with `hideUnsupported`.
 - **Read for meaning, not for looks**: `styles`, `card_mod`, bubble modules
   (origami_*) are ignored. JS (`${…}`) and Jinja (`{{ … }}`) templates are not
   evaluated; a templated string counts as absent.

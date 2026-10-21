@@ -20,6 +20,10 @@ Item {
     property string dashboard: ""
     // Pop-up hash this tab opens on ("#popup_kitchen"); its root then is that page.
     property string startPage: ""
+    // Indices of the view's sections to leave out (a greeting, a weather card…).
+    property var skipSections: []
+    // Drop unsupported cards instead of drawing a fallback box for them.
+    property bool hideUnsupported: false
     property string mdiFontPath: ""
     property string mdiMapPath: ""
 
@@ -53,7 +57,9 @@ Item {
             return false;
         };
         if (view) {
-            (view.sections || []).forEach(sec => {
+            (view.sections || []).forEach((sec, i) => {
+                if ((skipSections || []).indexOf(i) >= 0)
+                    return;
                 const cards = (sec.cards || []).filter(c => !collect(c));
                 blocksOf(cards).forEach(b => roots.push(b));
             });
@@ -146,6 +152,7 @@ Item {
         }
     }
     onDashboardChanged: load()
+    onSkipSectionsChanged: if (config) index()
     Component.onCompleted: load()
 
     FontLoader {
@@ -404,6 +411,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingXS
+            // The tab already names the root page; only sub-pages get a title bar.
+            visible: dash.pageStack.length > 0
 
             DankActionButton {
                 visible: dash.pageStack.length > dash.floor

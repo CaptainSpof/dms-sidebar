@@ -41,7 +41,7 @@ Item {
         }
     }
 
-    readonly property bool shown: !!dash && kind !== "hidden" && dash.conditionsMet(card.visibility) && (kind !== "conditional" || dash.conditionsMet(card.conditions))
+    readonly property bool shown: !!dash && kind !== "hidden" && !(kind === "fallback" && dash.hideUnsupported) && dash.conditionsMet(card.visibility) && (kind !== "conditional" || dash.conditionsMet(card.conditions))
 
     visible: shown
     implicitHeight: shown && loader.item ? loader.item.implicitHeight : 0

@@ -71,6 +71,8 @@ in
             type = "lovelace";
             dashboard = "dashboard-maison";
             page = "#popup_living_room";
+            skipSections = [ 0 ];
+            hideUnsupported = true;
           }
           {
             id = "pieces";
@@ -84,7 +86,9 @@ in
       description = ''
         Tabs, as in `dafSidebar.json`. `type = "lovelace"` renders the HA
         dashboard `dashboard` (its url_path), optionally opened on the pop-up
-        `page`; `type = "home"` lists entities by area. Empty keeps the
+        `page`, leaving out the view sections listed in `skipSections` and,
+        with `hideUnsupported`, cards it cannot render;
+        `type = "home"` lists entities by area. Empty keeps the
         plugin's default: a single "home" tab with one section per area.
       '';
     };
