@@ -89,3 +89,15 @@ saved settings live under that id, so never rename it.
   path goes home; routes to other dashboards or HA pages are left out. `hold_action` runs on a
   long press. Templated `selected`/`badge` are ignored; a templated `icon`
   falls back to its last `mdi:` literal.
+
+## RER tab (`type: "rer"`)
+
+- [RerTab.qml](plugin/components/RerTab.qml) reads PRIM stop-monitoring for
+  `stopArea` (IDFM "zone d'arrêt" id) with the key in `keyFile`, keeps the
+  dafos dashboard's rules (direction by `excludeDestinations`, `walk`/`margin`
+  stripes) and recomputes the countdown every 15 s.
+- **PRIM quota: 1000 requests a day per token**, shared with the dashboard.
+  The tab fetches only while shown (`active`, from the panel), at most every
+  `refreshSeconds` (default 120, minimum 60).
+- A tab that polls declares `property bool active`; SidebarPanel binds it to
+  "current tab of an open panel".

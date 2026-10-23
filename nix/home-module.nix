@@ -88,6 +88,8 @@ in
         dashboard `dashboard` (its url_path), optionally opened on the pop-up
         `page`, leaving out the view sections listed in `skipSections` and,
         with `hideUnsupported`, cards it cannot render;
+        `type = "rer"` lists the next departures at a PRIM `stopArea`, with
+        the token read at runtime from `keyFile`;
         `type = "home"` lists entities by area. Empty keeps the
         plugin's default: a single "home" tab with one section per area.
       '';

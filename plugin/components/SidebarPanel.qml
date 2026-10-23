@@ -7,7 +7,8 @@ import qs.DCommon.Widgets as DCommon
 // Slideout body: a tab bar over a stack of tab widgets. A tab is
 // {id, text, icon, type, ...}: `type: "home"` is the per-area entity list
 // (`sections`), `type: "lovelace"` renders an HA dashboard (`dashboard`: its
-// url_path), anything else shows a placeholder. To add a widget type, add a
+// url_path), `type: "rer"` lists the next departures at a stop (PRIM),
+// anything else shows a placeholder. To add a widget type, add a
 // component below and a branch in the Loader.
 Item {
     id: panel
@@ -46,6 +47,14 @@ Item {
     }
 
     Component {
+        id: rerTab
+        RerTab {
+            property var tabData
+            conf: tabData || ({})
+        }
+    }
+
+    Component {
         id: placeholderTab
         PlaceholderTab {
             property var tabData
@@ -75,8 +84,22 @@ Item {
                 delegate: Loader {
                     id: loader
                     required property var modelData
-                    sourceComponent: modelData.type === "home" ? homeTab : (modelData.type === "lovelace" ? lovelaceTab : placeholderTab)
-                    onLoaded: item.tabData = modelData
+                    required property int index
+                    // On screen: the shown tab of an open panel. Tabs that poll (RER) use it.
+                    readonly property bool shown: index === panel.currentIndex && panel.slideout.isVisible
+                    sourceComponent: {
+                        switch (modelData.type) {
+                        case "home": return homeTab;
+                        case "lovelace": return lovelaceTab;
+                        case "rer": return rerTab;
+                        default: return placeholderTab;
+                        }
+                    }
+                    onLoaded: {
+                        item.tabData = modelData;
+                        if (item.active !== undefined)
+                            item.active = Qt.binding(() => loader.shown);
+                    }
                 }
             }
         }
