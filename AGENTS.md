@@ -101,3 +101,14 @@ saved settings live under that id, so never rename it.
   `refreshSeconds` (default 120, minimum 60).
 - A tab that polls declares `property bool active`; SidebarPanel binds it to
   "current tab of an open panel".
+- `weather: [{name, latitude, longitude}]` adds a card per place under the
+  departures: now, today's max/min and rain chance, the next six hours. One
+  Open-Meteo request for all places (no key), every 30 min while shown.
+- In a `RowLayout`, Repeater delegates with `fillWidth` + `preferredWidth: 1`
+  kept their implicit width here; the hourly strip uses a `Row` with explicit
+  equal widths instead.
+
+## Keyboard
+
+- Escape closes the panel; Ctrl+Tab / Ctrl+Shift+Tab cycle the tabs
+  (`Shortcut`s in SidebarPanel, so they work wherever focus is in the panel).

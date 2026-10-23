@@ -89,7 +89,8 @@ in
         `page`, leaving out the view sections listed in `skipSections` and,
         with `hideUnsupported`, cards it cannot render;
         `type = "rer"` lists the next departures at a PRIM `stopArea`, with
-        the token read at runtime from `keyFile`;
+        the token read at runtime from `keyFile`, and Open-Meteo weather for
+        the `weather` places under it;
         `type = "home"` lists entities by area. Empty keeps the
         plugin's default: a single "home" tab with one section per area.
       '';

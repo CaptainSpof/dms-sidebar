@@ -23,6 +23,23 @@ Item {
 
     Keys.onEscapePressed: slideout.hide()
 
+    // Ctrl+Tab / Ctrl+Shift+Tab cycle through the tabs.
+    function cycle(step) {
+        if (tabs.length > 1)
+            currentIndex = (currentIndex + step + tabs.length) % tabs.length;
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+Tab"]
+        onActivated: panel.cycle(1)
+    }
+
+    Shortcut {
+        // Shift+Tab arrives as Backtab.
+        sequences: ["Ctrl+Shift+Tab", "Ctrl+Shift+Backtab", "Ctrl+Backtab"]
+        onActivated: panel.cycle(-1)
+    }
+
     Component {
         id: homeTab
         HomeTab {

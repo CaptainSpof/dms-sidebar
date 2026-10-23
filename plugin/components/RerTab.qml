@@ -31,6 +31,12 @@ Item {
     readonly property int refreshSeconds: Math.max(60, conf.refreshSeconds || 120)
     readonly property string keyFile: conf.keyFile || ""
 
+    // Weather under the departures: [{name, latitude, longitude}], from
+    // Open-Meteo (no key), refetched every 30 min while shown.
+    readonly property var places: conf.weather || []
+    property var weather: []        // [{name, temp, code, isDay, max, min, rain, hours: [{time, code, temp, rain, isDay}]}]
+    property real weatherAt: 0
+
     property string apiKey: ""
     property var departures: []     // [{dest, note, quay, expected (ms), late (min), cancelled}]
     property real fetchedAt: 0
@@ -100,6 +106,58 @@ Item {
         departures = out;
     }
 
+    function fetchWeather() {
+        if (places.length === 0)
+            return;
+        const q = "latitude=" + places.map(p => p.latitude).join(",") + "&longitude=" + places.map(p => p.longitude).join(",") + "&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,precipitation_probability,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis&forecast_days=2";
+        const xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = () => {
+            if (xhr.readyState !== XMLHttpRequest.DONE || xhr.status !== 200)
+                return;
+            try {
+                const json = JSON.parse(xhr.responseText);
+                const list = Array.isArray(json) ? json : [json];
+                weatherAt = Date.now();
+                weather = list.map((w, i) => {
+                    const h = w.hourly;
+                    // Hourly times are local ("2026-10-23T15:00"): start at the current hour.
+                    const start = Math.max(0, h.time.indexOf(w.current.time.slice(0, 13) + ":00"));
+                    const hours = [];
+                    for (let k = start + 1; k < Math.min(h.time.length, start + 7); k++)
+                        hours.push({time: h.time[k].slice(11, 13) + "h", code: h.weather_code[k], temp: Math.round(h.temperature_2m[k]), rain: h.precipitation_probability[k], isDay: h.is_day[k] === 1});
+                    return {
+                        name: places[i].name,
+                        temp: Math.round(w.current.temperature_2m),
+                        code: w.current.weather_code,
+                        isDay: w.current.is_day === 1,
+                        max: Math.round(w.daily.temperature_2m_max[0]),
+                        min: Math.round(w.daily.temperature_2m_min[0]),
+                        rain: w.daily.precipitation_probability_max[0],
+                        hours: hours
+                    };
+                });
+            } catch (e) {
+                console.warn("dafSidebar: weather:", e);
+            }
+        };
+        xhr.open("GET", "https://api.open-meteo.com/v1/forecast?" + q);
+        xhr.send();
+    }
+
+    // WMO weather code -> [French label, Material Symbols icon].
+    function wmo(code, isDay) {
+        if (code >= 95) return ["Orage", "thunderstorm"];
+        if (code >= 85) return ["Averses de neige", "weather_snowy"];
+        if (code >= 80) return ["Averses", "rainy"];
+        if (code >= 71) return ["Neige", "weather_snowy"];
+        if (code >= 61) return ["Pluie", "rainy"];
+        if (code >= 51) return ["Bruine", "rainy_light"];
+        if (code >= 45) return ["Brouillard", "foggy"];
+        if (code === 3) return ["Couvert", "cloud"];
+        if (code >= 1) return ["Éclaircies", isDay ? "partly_cloudy_day" : "partly_cloudy_night"];
+        return [isDay ? "Ensoleillé" : "Dégagé", isDay ? "sunny" : "clear_night"];
+    }
+
     // Upcoming departures, recomputed against `now` between fetches.
     readonly property var upcoming: departures.filter(d => d.expected - now >= 0).slice(0, limit)
 
@@ -134,7 +192,14 @@ Item {
 
     // Fetch when shown if the data is older than the interval, then on the
     // interval while shown.
-    onActiveChanged: if (active && Date.now() - fetchedAt >= refreshSeconds * 1000) fetch()
+    onActiveChanged: {
+        if (!active)
+            return;
+        if (Date.now() - fetchedAt >= refreshSeconds * 1000)
+            fetch();
+        if (Date.now() - weatherAt >= 30 * 60000)
+            fetchWeather();
+    }
     onApiKeyChanged: if (active) fetch()
 
     Timer {
@@ -142,6 +207,13 @@ Item {
         repeat: true
         running: tab.active
         onTriggered: tab.fetch()
+    }
+
+    Timer {
+        interval: 30 * 60000
+        repeat: true
+        running: tab.active
+        onTriggered: tab.fetchWeather()
     }
 
     Timer {
@@ -279,6 +351,119 @@ Item {
                                     text: row.departureState === "missed" ? "trop tard" : (row.departureState === "hurry" ? "pars maintenant" : "pars dans " + row.leave + " min")
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: tab.stripe(row.departureState)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── weather ──
+                Repeater {
+                    model: tab.weather
+                    delegate: StyledRect {
+                        id: place
+                        required property var modelData
+                        readonly property var w: modelData
+                        Layout.fillWidth: true
+                        Layout.topMargin: index === 0 ? Theme.spacingM : 0
+                        required property int index
+                        implicitHeight: placeCol.implicitHeight + Theme.spacingM * 2
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceContainerHigh
+
+                        ColumnLayout {
+                            id: placeCol
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.margins: Theme.spacingM
+                            spacing: Theme.spacingS
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingM
+                                DankIcon {
+                                    name: tab.wmo(place.w.code, place.w.isDay)[1]
+                                    size: 32
+                                    color: Theme.primary
+                                }
+                                StyledText {
+                                    text: place.w.temp + "°"
+                                    font.pixelSize: Theme.fontSizeLarge * 1.4
+                                    font.weight: Font.Medium
+                                    color: Theme.surfaceText
+                                }
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: place.w.name
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Theme.fontSizeMedium
+                                        font.weight: Font.Medium
+                                        color: Theme.surfaceText
+                                    }
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: tab.wmo(place.w.code, place.w.isDay)[0]
+                                        elide: Text.ElideRight
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.surfaceVariantText
+                                    }
+                                }
+                                ColumnLayout {
+                                    spacing: 0
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignRight
+                                        text: place.w.max + "° / " + place.w.min + "°"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: Theme.surfaceText
+                                    }
+                                    StyledText {
+                                        Layout.alignment: Qt.AlignRight
+                                        text: "pluie " + place.w.rain + " %"
+                                        font.pixelSize: Theme.fontSizeSmall
+                                        color: place.w.rain >= 50 ? Theme.primary : Theme.surfaceVariantText
+                                    }
+                                }
+                            }
+
+                            // Next hours.
+                            Row {
+                                id: hoursRow
+                                Layout.fillWidth: true
+                                Repeater {
+                                    model: place.w.hours
+                                    delegate: Column {
+                                        required property var modelData
+                                        width: hoursRow.width / Math.max(1, place.w.hours.length)
+                                        spacing: 2
+                                        StyledText {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: modelData.time
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.surfaceVariantText
+                                        }
+                                        DankIcon {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            name: tab.wmo(modelData.code, modelData.isDay)[1]
+                                            size: 20
+                                            color: Theme.surfaceText
+                                        }
+                                        StyledText {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: modelData.temp + "°"
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.surfaceText
+                                        }
+                                        StyledText {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: modelData.rain >= 20 ? modelData.rain + "%" : " "
+                                            font.pixelSize: Theme.fontSizeSmall
+                                            color: Theme.primary
+                                        }
+                                    }
                                 }
                             }
                         }
