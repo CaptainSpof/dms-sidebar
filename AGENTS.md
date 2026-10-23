@@ -104,6 +104,10 @@ saved settings live under that id, so never rename it.
 - `weather: [{name, latitude, longitude}]` adds a card per place under the
   departures: now, today's max/min and rain chance, the next six hours. One
   Open-Meteo request for all places (no key), every 30 min while shown.
+- An advice card above the weather says what to take for the next six hours,
+  over every place (a condition at some places only names them): storm, rain
+  now or likely (>= 50 %, with the hour), snow, UV >= 6 (or >= 3 on a dry
+  day), heat >= 28°, cold <= 3° / fresh <= 10°, gusts >= 50 km/h.
 - In a `RowLayout`, Repeater delegates with `fillWidth` + `preferredWidth: 1`
   kept their implicit width here; the hourly strip uses a `Row` with explicit
   equal widths instead.

@@ -109,7 +109,7 @@ Item {
     function fetchWeather() {
         if (places.length === 0)
             return;
-        const q = "latitude=" + places.map(p => p.latitude).join(",") + "&longitude=" + places.map(p => p.longitude).join(",") + "&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,precipitation_probability,is_day&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis&forecast_days=2";
+        const q = "latitude=" + places.map(p => p.latitude).join(",") + "&longitude=" + places.map(p => p.longitude).join(",") + "&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,precipitation_probability,is_day,uv_index,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FParis&forecast_days=2";
         const xhr = new XMLHttpRequest();
         xhr.onreadystatechange = () => {
             if (xhr.readyState !== XMLHttpRequest.DONE || xhr.status !== 200)
@@ -124,7 +124,7 @@ Item {
                     const start = Math.max(0, h.time.indexOf(w.current.time.slice(0, 13) + ":00"));
                     const hours = [];
                     for (let k = start + 1; k < Math.min(h.time.length, start + 7); k++)
-                        hours.push({time: h.time[k].slice(11, 13) + "h", code: h.weather_code[k], temp: Math.round(h.temperature_2m[k]), rain: h.precipitation_probability[k], isDay: h.is_day[k] === 1});
+                        hours.push({time: h.time[k].slice(11, 13) + "h", code: h.weather_code[k], temp: Math.round(h.temperature_2m[k]), rain: h.precipitation_probability[k], isDay: h.is_day[k] === 1, uv: h.uv_index[k] || 0, gust: Math.round(h.wind_gusts_10m[k] || 0)});
                     return {
                         name: places[i].name,
                         temp: Math.round(w.current.temperature_2m),
@@ -142,6 +142,58 @@ Item {
         };
         xhr.open("GET", "https://api.open-meteo.com/v1/forecast?" + q);
         xhr.send();
+    }
+
+    // What to take or wear for the next hours, over every place: [{icon, text}].
+    // A condition seen at some places only names them ("à Paris").
+    readonly property var advice: {
+        if (weather.length === 0)
+            return [];
+        const isRain = c => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+        const isSnow = c => (c >= 71 && c <= 77) || c === 85 || c === 86;
+        const where = names => names.length === weather.length ? "" : " à " + names.join(" et ");
+        const hit = test => weather.filter(w => test(w)).map(w => w.name);
+        const out = [];
+
+        const storm = hit(w => w.code >= 95 || w.hours.some(h => h.code >= 95));
+        if (storm.length)
+            out.push({icon: "thunderstorm", text: "Orage prévu" + where(storm) + " : mieux vaut éviter de sortir."});
+
+        const rainNow = hit(w => isRain(w.code));
+        if (rainNow.length)
+            out.push({icon: "umbrella", text: "Il pleut" + where(rainNow) + " : prends un parapluie."});
+        const soon = weather.filter(w => !isRain(w.code)).map(w => ({name: w.name, hour: w.hours.find(h => h.rain >= 50 || isRain(h.code))})).filter(x => !!x.hour);
+        if (soon.length) {
+            const first = soon.reduce((a, b) => a.hour.time <= b.hour.time ? a : b);
+            out.push({icon: "umbrella", text: "Pluie probable vers " + first.hour.time + where(soon.map(x => x.name)) + " : prends un parapluie."});
+        }
+
+        const snow = hit(w => isSnow(w.code) || w.hours.some(h => isSnow(h.code)));
+        if (snow.length)
+            out.push({icon: "weather_snowy", text: "Neige prévue" + where(snow) + " : chaussures adaptées."});
+
+        const uvMax = Math.round(Math.max(0, ...weather.map(w => Math.max(0, ...w.hours.map(h => h.uv)))));
+        if (uvMax >= 6)
+            out.push({icon: "sunny", text: "Soleil fort (UV " + uvMax + ")" + where(hit(w => w.hours.some(h => h.uv >= 6))) + " : lunettes et crème solaire."});
+        else if (uvMax >= 3 && !rainNow.length && !soon.length)
+            out.push({icon: "sunny", text: "Beau temps (UV " + uvMax + ") : lunettes de soleil conseillées."});
+
+        const tMax = Math.max(...weather.map(w => Math.max(w.temp, ...w.hours.map(h => h.temp))));
+        const tMin = Math.min(...weather.map(w => Math.min(w.temp, ...w.hours.map(h => h.temp))));
+        if (tMax >= 28)
+            out.push({icon: "thermostat", text: "Jusqu'à " + tMax + "° : habille-toi léger et prends de l'eau."});
+        if (tMin <= 3)
+            out.push({icon: "ac_unit", text: "Jusqu'à " + tMin + "° : couvre-toi bien (bonnet, gants)."});
+        else if (tMin <= 10)
+            out.push({icon: "checkroom", text: "Frais (" + tMin + "°) : prends une veste."});
+
+        const gust = Math.max(...weather.map(w => Math.max(0, ...w.hours.map(h => h.gust))));
+        if (gust >= 50)
+            out.push({icon: "air", text: "Rafales jusqu'à " + gust + " km/h" + where(hit(w => w.hours.some(h => h.gust >= 50))) + " : le parapluie risque de souffrir."});
+
+        if (out.length === 0)
+            out.push({icon: "check_circle", text: "Rien de particulier à prévoir pour les prochaines heures."});
+        return out;
     }
 
     // WMO weather code -> [French label, Material Symbols icon].
@@ -351,6 +403,47 @@ Item {
                                     text: row.departureState === "missed" ? "trop tard" : (row.departureState === "hurry" ? "pars maintenant" : "pars dans " + row.leave + " min")
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: tab.stripe(row.departureState)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── advice: what to take for the next hours ──
+                StyledRect {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Theme.spacingM
+                    visible: tab.advice.length > 0
+                    implicitHeight: adviceCol.implicitHeight + Theme.spacingM * 2
+                    radius: Theme.cornerRadius
+                    color: Theme.secondaryContainer
+
+                    ColumnLayout {
+                        id: adviceCol
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.margins: Theme.spacingM
+                        spacing: Theme.spacingS
+
+                        Repeater {
+                            model: tab.advice
+                            delegate: RowLayout {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                spacing: Theme.spacingS
+                                DankIcon {
+                                    Layout.alignment: Qt.AlignTop
+                                    name: modelData.icon
+                                    size: 20
+                                    color: Theme.onSecondaryContainer
+                                }
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: modelData.text
+                                    wrapMode: Text.WordWrap
+                                    font.pixelSize: Theme.fontSizeMedium
+                                    color: Theme.onSecondaryContainer
                                 }
                             }
                         }
